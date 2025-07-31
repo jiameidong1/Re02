@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>奉天论坛</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    // Tailwind 配置
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#FF7D00',
+            vip: '#FF3B30', // 大V红色
+            dark: '#1D2129',
+            light: '#F2F3F5',
+            'gray-light': '#C9CDD4',
+            'gray-medium': '#86909C',
+            'gray-dark': '#4E5969'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'shine': 'shine 1.5s infinite alternate'
+          },
+          keyframes: {
+            shine: {
+              '0%': { boxShadow: '0 0 5px rgba(255, 59, 48, 0.7)' },
+              '100%': { boxShadow: '0 0 15px rgba(255, 59, 48, 0.9), 0 0 20px rgba(255, 59, 48, 0.5)' }
+            }
+          }
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .transition-height {
+        transition: max-height 0.3s ease-in-out;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      /* 大V标识样式 - 个人主页 */
+      .v-avatar-badge {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 30px;
+        height: 30px;
+        border: 2px solid white;
+        border-radius: 50%;
+        background-color: theme('colors.vip');
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        font-weight: bold;
+        color: white;
+        font-size: 14px;
+        box-shadow: 0 0 5px rgba(255, 59, 48, 0.7);
+      }
+      /* 帖子中的V标识样式 - 比头像小 */
+      .post-v-badge {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 20px;
+        height: 20px;
+        border: 2px solid white;
+        border-radius: 50%;
+        background-color: theme('colors.vip');
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        font-weight: bold;
+        color: white;
+        font-size: 10px;
+        box-shadow: 0 0 3px rgba(255, 59, 48, 0.7);
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-light text-dark min-h-screen flex flex-col">
+<!-- 导航栏 -->
+<header id="navbar" class="bg-white shadow-md fixed w-full z-50 transition-all duration-300">
+  <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+    <!-- 论坛logo -->
+    <div class="flex items-center space-x-2">
+      <div class="text-primary text-3xl">
+        <i class="fa fa-comments"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-primary">奉天论坛</h1>
+    </div>
+
+    <!-- 搜索框 - 仅在登录后显示 -->
+    <div id="search-container" class="hidden md:flex items-center flex-1 max-w-xl mx-8">
+      <div class="relative w-full">
+        <input type="text" placeholder="搜索帖子..."
+               class="w-full py-2 px-4 pr-10 rounded-full border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+        <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium">
+          <i class="fa fa-search"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 用户操作区 -->
+    <div id="user-actions" class="flex items-center space-x-4">
+      <button id="login-btn" class="hidden md:block px-4 py-2 rounded-full border border-primary text-primary hover:bg-primary/5 transition-colors">
+        登录
+      </button>
+      <button id="register-btn" class="hidden md:block px-4 py-2 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm">
+        注册
+      </button>
+
+      <!-- 用户菜单 - 登录后显示 -->
+      <div id="user-menu-container" class="hidden relative">
+        <button id="user-menu-btn" class="flex items-center space-x-2 focus:outline-none">
+          <div class="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/20 relative">
+            <img id="nav-avatar" src="https://picsum.photos/200/200?random=1" alt="用户头像" class="w-full h-full object-cover">
+            <!-- 导航栏中的V标识 -->
+            <div id="nav-v-badge" class="post-v-badge hidden animate-shine">
+              V
+            </div>
+          </div>
+          <span id="nav-username" class="hidden md:inline font-medium">用户名</span>
+          <i class="fa fa-angle-down text-gray-medium"></i>
+        </button>
+
+        <!-- 下拉菜单 -->
+        <div id="user-dropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50 invisible opacity-0 transform translate-y-2 transition-all duration-200">
+          <a href="#" id="profile-link" class="block px-4 py-2 hover:bg-light transition-colors">
+            <i class="fa fa-user mr-2 text-gray-medium"></i>个人主页
+          </a>
+          <a href="#" id="edit-profile-link" class="block px-4 py-2 hover:bg-light transition-colors">
+            <i class="fa fa-cog mr-2 text-gray-medium"></i>编辑资料
+          </a>
+          <div class="border-t border-gray-light my-1"></div>
+          <a href="#" id="logout-link" class="block px-4 py-2 hover:bg-light transition-colors text-red-500">
+            <i class="fa fa-sign-out mr-2"></i>退出登录
+          </a>
+        </div>
+      </div>
+
+      <!-- 移动端菜单按钮 -->
+      <button id="mobile-menu-btn" class="md:hidden text-xl">
+        <i class="fa fa-bars"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端菜单 -->
+  <div id="mobile-menu" class="md:hidden bg-white border-t hidden">
+    <div class="container mx-auto px-4 py-3">
+      <div class="mb-3">
+        <input type="text" placeholder="搜索帖子..."
+               class="w-full py-2 px-4 pr-10 rounded-full border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+      </div>
+      <div id="mobile-auth-buttons" class="flex space-x-3 mb-3">
+        <button id="mobile-login-btn" class="flex-1 px-4 py-2 rounded-full border border-primary text-primary hover:bg-primary/5 transition-colors">
+          登录
+        </button>
+        <button id="mobile-register-btn" class="flex-1 px-4 py-2 rounded-full bg-primary text-white hover:bg-primary/90 transition-colors shadow-sm">
+          注册
+        </button>
+      </div>
+      <div id="mobile-user-menu" class="hidden">
+        <div class="flex items-center space-x-3 mb-3 p-2 hover:bg-light rounded-lg">
+          <div class="w-10 h-10 rounded-full overflow-hidden relative">
+            <img id="mobile-nav-avatar" src="https://picsum.photos/200/200?random=1" alt="用户头像" class="w-full h-full object-cover">
+            <div id="mobile-nav-v-badge" class="post-v-badge hidden animate-shine">
+              V
+            </div>
+          </div>
+          <div>
+            <p id="mobile-nav-username" class="font-medium">用户名</p>
+            <p id="mobile-nav-level" class="text-xs text-gray-medium">Lv.1</p>
+          </div>
+        </div>
+        <a href="#" id="mobile-profile-link" class="block px-4 py-2 hover:bg-light rounded-lg mb-1">
+          <i class="fa fa-user mr-2 text-gray-medium"></i>个人主页
+        </a>
+        <a href="#" id="mobile-edit-profile-link" class="block px-4 py-2 hover:bg-light rounded-lg mb-1">
+          <i class="fa fa-cog mr-2 text-gray-medium"></i>编辑资料
+        </a>
+        <a href="#" id="mobile-logout-link" class="block px-4 py-2 hover:bg-light rounded-lg text-red-500">
+          <i class="fa fa-sign-out mr-2"></i>退出登录
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- 主内容区 -->
+<main class="flex-1 pt-16">
+  <!-- 登录模态框 -->
+  <div id="login-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center opacity-0 invisible transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">登录</h2>
+          <button id="close-login-modal" class="text-gray-medium hover:text-dark transition-colors">
+            <i class="fa fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label for="login-username" class="block text-sm font-medium text-gray-dark mb-1">账号</label>
+            <input type="text" id="login-username" required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+
+          <div>
+            <label for="login-password" class="block text-sm font-medium text-gray-dark mb-1">密码</label>
+            <div class="relative">
+              <input type="password" id="login-password" required
+                     class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+              <button type="button" class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium" data-target="login-password">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" class="rounded text-primary focus:ring-primary">
+              <span class="text-sm text-gray-dark">记住我</span>
+            </label>
+            <a href="#" class="text-sm text-primary hover:underline">忘记密码?</a>
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
+            登录
+          </button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <p class="text-gray-dark">还没有账号? <a href="#" id="switch-to-register" class="text-primary font-medium hover:underline">立即注册</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册模态框 -->
+  <div id="register-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center opacity-0 invisible transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">注册</h2>
+          <button id="close-register-modal" class="text-gray-medium hover:text-dark transition-colors">
+            <i class="fa fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <form id="register-form" class="space-y-4">
+          <div>
+            <label for="register-username" class="block text-sm font-medium text-gray-dark mb-1">账号</label>
+            <input type="text" id="register-username" required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+            <p class="text-xs text-gray-medium mt-1">账号长度至少6位（特殊账号除外）</p>
+          </div>
+
+          <div>
+            <label for="register-nickname" class="block text-sm font-medium text-gray-dark mb-1">昵称</label>
+            <input type="text" id="register-nickname" required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+
+          <div>
+            <label for="register-password" class="block text-sm font-medium text-gray-dark mb-1">密码</label>
+            <div class="relative">
+              <input type="password" id="register-password" required
+                     class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+              <button type="button" class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium" data-target="register-password">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+            </div>
+            <p class="text-xs text-gray-medium mt-1">密码长度至少8位（特殊账号除外）</p>
+          </div>
+
+          <div>
+            <label for="register-confirm-password" class="block text-sm font-medium text-gray-dark mb-1">确认密码</label>
+            <div class="relative">
+              <input type="password" id="register-confirm-password" required
+                     class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+              <button type="button" class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium" data-target="register-confirm-password">
+                <i class="fa fa-eye-slash"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all">
+            注册
+          </button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <p class="text-gray-dark">已有账号? <a href="#" id="switch-to-login" class="text-primary font-medium hover:underline">立即登录</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发帖模态框 -->
+  <div id="post-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center opacity-0 invisible transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+      <div class="p-6 border-b">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-bold">发布新帖</h2>
+          <button id="close-post-modal" class="text-gray-medium hover:text-dark transition-colors">
+            <i class="fa fa-times text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6">
+        <form id="post-form" class="space-y-4">
+          <div>
+            <label for="post-title" class="block text-sm font-medium text-gray-dark mb-1">标题</label>
+            <input type="text" id="post-title" placeholder="请输入标题" required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+
+          <!-- 工具栏 -->
+          <div class="flex items-center space-x-2 p-2 bg-light rounded-lg">
+            <button type="button" id="bold-btn" class="p-2 rounded hover:bg-white transition-colors" title="加粗">
+              <img src="https://picsum.photos/20/20?random=100" alt="加粗" class="w-5 h-5">
+            </button>
+            <button type="button" id="image-btn" class="p-2 rounded hover:bg-white transition-colors" title="添加图片">
+              <img src="https://picsum.photos/20/20?random=101" alt="添加图片" class="w-5 h-5">
+            </button>
+            <input type="file" id="image-upload" accept="image/*" class="hidden">
+          </div>
+
+          <!-- 内容编辑区 -->
+          <div>
+            <label for="post-content" class="block text-sm font-medium text-gray-dark mb-1">内容</label>
+            <div id="post-content" class="w-full min-h-[200px] p-4 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-white" contenteditable="true">
+              请输入发表内容
+            </div>
+          </div>
+
+          <!-- 图片预览区 -->
+          <div id="image-preview-container" class="hidden">
+            <p class="text-sm font-medium text-gray-dark mb-2">图片预览</p>
+            <div class="relative">
+              <img id="image-preview" src="" alt="预览图片" class="max-w-full rounded-lg">
+              <div class="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full cursor-pointer hover:bg-black/70 transition-colors" id="remove-image">
+                <i class="fa fa-times"></i>
+              </div>
+              <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center space-x-2">
+                <span>调整大小:</span>
+                <button class="text-white hover:text-gray-light transition-colors" id="decrease-size">
+                  <i class="fa fa-minus"></i>
+                </button>
+                <span id="size-percentage">100%</span>
+                <button class="text-white hover:text-gray-light transition-colors" id="increase-size">
+                  <i class="fa fa-plus"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="p-6 border-t flex justify-end">
+        <button id="cancel-post" class="px-6 py-2 mr-3 rounded-lg border border-gray-light text-gray-dark hover:bg-light transition-colors">
+          取消
+        </button>
+        <button id="submit-post" class="px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors shadow-sm">
+          发布
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑资料模态框 -->
+  <div id="edit-profile-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center opacity-0 invisible transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+      <div class="p-6 border-b">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-bold">编辑资料</h2>
+          <button id="close-edit-profile-modal" class="text-gray-medium hover:text-dark transition-colors">
+            <i class="fa fa-times text-xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6">
+        <form id="edit-profile-form" class="space-y-6">
+          <!-- 头像上传 -->
+          <div class="text-center">
+            <div class="relative inline-block mb-3">
+              <div id="profile-avatar-container" class="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md mx-auto">
+                <img id="profile-avatar" src="https://picsum.photos/200/200?random=1" alt="用户头像" class="w-full h-full object-cover">
+              </div>
+              <label for="avatar-upload" class="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white cursor-pointer shadow-md hover:bg-primary/90 transition-colors">
+                <i class="fa fa-camera"></i>
+                <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+              </label>
+            </div>
+            <p class="text-sm text-gray-medium">点击更换头像</p>
+          </div>
+
+          <!-- 昵称 -->
+          <div>
+            <label for="edit-nickname" class="block text-sm font-medium text-gray-dark mb-1">昵称</label>
+            <input type="text" id="edit-nickname" required
+                   class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+
+          <!-- 密码修改 -->
+          <div class="border-t border-gray-light pt-4">
+            <h3 class="font-medium mb-4">修改密码</h3>
+
+            <div>
+              <label for="current-password" class="block text-sm font-medium text-gray-dark mb-1">当前密码</label>
+              <div class="relative">
+                <input type="password" id="current-password"
+                       class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                <button type="button" class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium" data-target="current-password">
+                  <i class="fa fa-eye-slash"></i>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="new-password" class="block text-sm font-medium text-gray-dark mb-1">新密码</label>
+              <div class="relative">
+                <input type="password" id="new-password"
+                       class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                <button type="button" class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium" data-target="new-password">
+                  <i class="fa fa-eye-slash"></i>
+                </button>
+              </div>
+              <p class="text-xs text-gray-medium mt-1">密码长度至少8位</p>
+            </div>
+
+            <div>
+              <label for="confirm-new-password" class="block text-sm font-medium text-gray-dark mb-1">确认新密码</label>
+              <div class="relative">
+                <input type="password" id="confirm-new-password"
+                       class="w-full px-4 py-3 rounded-lg border border-gray-light focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+                <button type="button" class="toggle-password absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-medium" data-target="confirm-new-password">
+                  <i class="fa fa-eye-slash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="p-6 border-t flex justify-end">
+        <button id="cancel-edit-profile" class="px-6 py-2 mr-3 rounded-lg border border-gray-light text-gray-dark hover:bg-light transition-colors">
+          取消
+        </button>
+        <button id="save-profile" class="px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors shadow-sm">
+          保存修改
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主页面内容 -->
+  <div id="forum-container" class="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+    <!-- 左侧帖子列表 -->
+    <div class="lg:w-3/4">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold mb-2">论坛帖子</h2>
+        <p class="text-gray-medium">浏览最新的论坛讨论内容</p>
+      </div>
+
+      <!-- 帖子列表 -->
+      <div id="posts-list" class="space-y-6">
+        <!-- 帖子项将通过JS动态生成 -->
+      </div>
+
+      <!-- 加载更多 -->
+      <div class="mt-8 text-center">
+        <button id="load-more" class="px-6 py-2 rounded-lg border border-gray-light text-gray-dark hover:bg-light transition-colors">
+          加载更多 <i class="fa fa-angle-down ml-1"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 右侧边栏 -->
+    <div class="lg:w-1/4 space-y-6">
+      <!-- 发布帖子按钮 - 固定定位在右侧 -->
+      <div class="sticky top-24">
+        <button id="create-post-btn" class="w-full py-4 rounded-xl bg-accent text-white font-bold text-lg hover:bg-accent/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center space-x-2">
+          <i class="fa fa-pencil"></i>
+          <span>发布帖子</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 个人主页 -->
+  <div id="profile-page" class="container mx-auto px-4 py-8 hidden">
+    <div class="mb-8">
+      <button id="back-to-forum" class="inline-flex items-center text-primary hover:underline">
+        <i class="fa fa-angle-left mr-1"></i> 返回论坛
+      </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+      <!-- 用户信息头部 -->
+      <div class="p-8">
+        <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
+          <!-- 头像 -->
+          <div class="relative">
+            <div class="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-md">
+              <img id="profile-page-avatar" src="https://picsum.photos/200/200?random=1" alt="用户头像" class="w-full h-full object-cover">
+            </div>
+            <!-- 大V标识 -->
+            <div id="v-badge" class="v-avatar-badge hidden animate-shine">
+              V
+            </div>
+          </div>
+
+          <!-- 用户基本信息 -->
+          <div class="flex-1">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+              <h2 id="profile-page-nickname" class="text-2xl md:text-3xl font-bold">用户名</h2>
+              <span id="profile-page-level" class="inline-block px-3 py-1 bg-light rounded-full text-sm font-medium text-primary">Lv.1</span>
+            </div>
+
+            <p id="profile-page-username" class="text-gray-medium mb-4">账号: 12345678</p>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="text-center">
+                <p id="profile-post-count" class="text-2xl font-bold">0</p>
+                <p class="text-gray-medium text-sm">发布帖子</p>
+              </div>
+              <div class="text-center">
+                <p id="profile-fans-count" class="text-2xl font-bold">0</p>
+                <p class="text-gray-medium text-sm">粉丝</p>
+              </div>
+              <div class="text-center">
+                <p id="profile-register-date" class="text-lg font-medium">2023-01-01</p>
+                <p class="text-gray-medium text-sm">注册时间</p>
+              </div>
+              <div class="text-center">
+                <p id="profile-last-login" class="text-lg font-medium">刚刚</p>
+                <p class="text-gray-medium text-sm">最后登录</p>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div id="profile-actions" class="flex gap-3">
+              <button id="follow-btn" class="px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors hidden">
+                <i class="fa fa-plus mr-1"></i> 关注
+              </button>
+              <button id="unfollow-btn" class="px-6 py-2 rounded-lg border border-gray-light text-gray-dark hover:bg-light transition-colors hidden">
+                <i class="fa fa-check mr-1"></i> 已关注
+              </button>
+              <button id="edit-own-profile-btn" class="px-6 py-2 rounded-lg border border-gray-light text-gray-dark hover:bg-light transition-colors hidden">
+                <i class="fa fa-cog mr-1"></i> 编辑资料
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户发布的帖子 -->
+    <div>
+      <h3 class="text-xl font-bold mb-6">发布的帖子</h3>
+      <div id="user-posts-list" class="space-y-6">
+        <!-- 用户帖子将通过JS动态生成 -->
+        <div id="no-posts" class="text-center py-12 bg-white rounded-xl shadow-sm">
+          <div class="text-gray-light text-5xl mb-4">
+            <i class="fa fa-file-text-o"></i>
+          </div>
+          <p class="text-gray-medium">该用户还没有发布任何帖子</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- 页脚 -->
+<footer class="bg-white border-t mt-12">
+  <div class="container mx-auto px-4 py-8">
+    <div class="text-center">
+      <div class="text-primary text-2xl mb-3">
+        <i class="fa fa-comments"></i>
+      </div>
+      <h2 class="text-xl font-bold text-primary mb-4">奉天论坛</h2>
+      <p class="text-gray-medium mb-6">分享你的观点，连接每一个声音</p>
+      <div class="flex justify-center space-x-4 mb-6">
+        <a href="#" class="text-gray-medium hover:text-primary transition-colors">
+          <i class="fa fa-weibo text-xl"></i>
+        </a>
+        <a href="#" class="text-gray-medium hover:text-primary transition-colors">
+          <i class="fa fa-wechat text-xl"></i>
+        </a>
+        <a href="#" class="text-gray-medium hover:text-primary transition-colors">
+          <i class="fa fa-qq text-xl"></i>
+        </a>
+      </div>
+      <p class="text-gray-medium text-sm">© 2023 奉天论坛 版权所有</p>
+    </div>
+  </div>
+</footer>
+
+<!-- 通知提示 -->
+<div id="toast" class="fixed bottom-6 right-6 bg-dark text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-2 z-50">
+  <i id="toast-icon" class="fa fa-check-circle text-green-400"></i>
+  <span id="toast-message">操作成功</span>
+</div>
+
+<script>
+  // 全局状态管理
+  const state = {
+    currentUser: null,
+    users: [
+      { id: '10000', password: '10000', nickname: '清怡', avatar: 'https://picsum.photos/200/200?random=10',
+        level: 100, exp: 50000, fans: 100000, isVip: true, registerDate: '2013-01-15', lastLogin: new Date() },
+      { id: '10001', password: '10001', nickname: '清容', avatar: 'https://picsum.photos/200/200?random=11',
+        level: 100, exp: 50000, fans: 100000, isVip: true, registerDate: '2013-01-17', lastLogin: new Date() },
+      { id: '10002', password: '10002', nickname: '悠悠', avatar: 'https://picsum.photos/200/200?random=12',
+        level: 100, exp: 50000, fans: 100000, isVip: true, registerDate: '2016-03-05', lastLogin: new Date() },
+      { id: '001', password: '001', nickname: '系统管理员', avatar: 'https://picsum.photos/200/200?random=13',
+        level: 100, exp: 50000, fans: 100000, isVip: true, registerDate: '2016-03-05', lastLogin: new Date() }
+    ],
+    posts: [],
+    following: []
+  };
+
+  // 等级经验配置 - 总经验50000，从1级到100级
+  const levelConfig = [];
+  let totalExp = 0;
+  for (let i = 1; i <= 100; i++) {
+    let exp;
+    if (i === 100) {
+      // 最后一级分配剩余的所有经验
+      exp = 50000 - totalExp;
+    } else {
+      // 计算每级所需经验，使用渐进式增长
+      // 前期增长较慢，后期增长加快
+      const growthFactor = 1.05; // 增长系数
+      exp = Math.floor(50 * Math.pow(growthFactor, i - 1));
+
+      // 确保不会超过剩余所需经验
+      if (totalExp + exp > 50000) {
+        exp = 50000 - totalExp;
+      }
+    }
+    totalExp += exp;
+    levelConfig.push({
+      level: i,
+      requiredExp: exp,
+      totalExp: totalExp
+    });
+  }
+
+  // DOM 元素
+  const elements = {
+    // 导航栏元素
+    navbar: document.getElementById('navbar'),
+    searchContainer: document.getElementById('search-container'),
+    loginBtn: document.getElementById('login-btn'),
+    registerBtn: document.getElementById('register-btn'),
+    userMenuContainer: document.getElementById('user-menu-container'),
+    userMenuBtn: document.getElementById('user-menu-btn'),
+    userDropdown: document.getElementById('user-dropdown'),
+    navAvatar: document.getElementById('nav-avatar'),
+    navUsername: document.getElementById('nav-username'),
+    navVBadge: document.getElementById('nav-v-badge'),
+    profileLink: document.getElementById('profile-link'),
+    editProfileLink: document.getElementById('edit-profile-link'),
+    logoutLink: document.getElementById('logout-link'),
+    mobileMenuBtn: document.getElementById('mobile-menu-btn'),
+    mobileMenu: document.getElementById('mobile-menu'),
+    mobileAuthButtons: document.getElementById('mobile-auth-buttons'),
+    mobileUserMenu: document.getElementById('mobile-user-menu'),
+    mobileLoginBtn: document.getElementById('mobile-login-btn'),
+    mobileRegisterBtn: document.getElementById('mobile-register-btn'),
+    mobileNavAvatar: document.getElementById('mobile-nav-avatar'),
+    mobileNavUsername: document.getElementById('mobile-nav-username'),
+    mobileNavLevel: document.getElementById('mobile-nav-level'),
+    mobileNavVBadge: document.getElementById('mobile-nav-v-badge'),
+    mobileProfileLink: document.getElementById('mobile-profile-link'),
+    mobileEditProfileLink: document.getElementById('mobile-edit-profile-link'),
+    mobileLogoutLink: document.getElementById('mobile-logout-link'),
+
+    // 模态框元素
+    loginModal: document.getElementById('login-modal'),
+    closeLoginModal: document.getElementById('close-login-modal'),
+    loginForm: document.getElementById('login-form'),
+    loginUsername: document.getElementById('login-username'),
+    loginPassword: document.getElementById('login-password'),
+    switchToRegister: document.getElementById('switch-to-register'),
+
+    registerModal: document.getElementById('register-modal'),
+    closeRegisterModal: document.getElementById('close-register-modal'),
+    registerForm: document.getElementById('register-form'),
+    registerUsername: document.getElementById('register-username'),
+    registerNickname: document.getElementById('register-nickname'),
+    registerPassword: document.getElementById('register-password'),
+    registerConfirmPassword: document.getElementById('register-confirm-password'),
+    switchToLogin: document.getElementById('switch-to-login'),
+
+    postModal: document.getElementById('post-modal'),
+    closePostModal: document.getElementById('close-post-modal'),
+    createPostBtn: document.getElementById('create-post-btn'),
+    postForm: document.getElementById('post-form'),
+    postTitle: document.getElementById('post-title'),
+    postContent: document.getElementById('post-content'),
+    boldBtn: document.getElementById('bold-btn'),
+    imageBtn: document.getElementById('image-btn'),
+    imageUpload: document.getElementById('image-upload'),
+    imagePreviewContainer: document.getElementById('image-preview-container'),
+    imagePreview: document.getElementById('image-preview'),
+    removeImage: document.getElementById('remove-image'),
+    decreaseSize: document.getElementById('decrease-size'),
+    increaseSize: document.getElementById('increase-size'),
+    sizePercentage: document.getElementById('size-percentage'),
+    cancelPost: document.getElementById('cancel-post'),
+    submitPost: document.getElementById('submit-post'),
+
+    editProfileModal: document.getElementById('edit-profile-modal'),
+    closeEditProfileModal: document.getElementById('close-edit-profile-modal'),
+    profileAvatarContainer: document.getElementById('profile-avatar-container'),
+    profileAvatar: document.getElementById('profile-avatar'),
+    avatarUpload: document.getElementById('avatar-upload'),
+    editNickname: document.getElementById('edit-nickname'),
+    currentPassword: document.getElementById('current-password'),
+    newPassword: document.getElementById('new-password'),
+    confirmNewPassword: document.getElementById('confirm-new-password'),
+    cancelEditProfile: document.getElementById('cancel-edit-profile'),
+    saveProfile: document.getElementById('save-profile'),
+
+    // 页面容器
+    forumContainer: document.getElementById('forum-container'),
+    profilePage: document.getElementById('profile-page'),
+    backToForum: document.getElementById('back-to-forum'),
+
+    // 个人主页元素
+    profilePageAvatar: document.getElementById('profile-page-avatar'),
+    vBadge: document.getElementById('v-badge'),
+    profilePageNickname: document.getElementById('profile-page-nickname'),
+    profilePageLevel: document.getElementById('profile-page-level'),
+    profilePageUsername: document.getElementById('profile-page-username'),
+    profilePostCount: document.getElementById('profile-post-count'),
+    profileFansCount: document.getElementById('profile-fans-count'),
+    profileRegisterDate: document.getElementById('profile-register-date'),
+    profileLastLogin: document.getElementById('profile-last-login'),
+    profileActions: document.getElementById('profile-actions'),
+    followBtn: document.getElementById('follow-btn'),
+    unfollowBtn: document.getElementById('unfollow-btn'),
+    editOwnProfileBtn: document.getElementById('edit-own-profile-btn'),
+    userPostsList: document.getElementById('user-posts-list'),
+    noPosts: document.getElementById('no-posts'),
+
+    // 帖子列表
+    postsList: document.getElementById('posts-list'),
+    loadMore: document.getElementById('load-more'),
+
+    // 通知提示
+    toast: document.getElementById('toast'),
+    toastIcon: document.getElementById('toast-icon'),
+    toastMessage: document.getElementById('toast-message')
+  };
+
+  // 工具函数
+  const utils = {
+    // 显示通知提示
+    showToast(message, isSuccess = true) {
+      elements.toastMessage.textContent = message;
+      elements.toastIcon.className = isSuccess
+              ? 'fa fa-check-circle text-green-400'
+              : 'fa fa-exclamation-circle text-red-400';
+
+      elements.toast.classList.remove('translate-y-20', 'opacity-0');
+      elements.toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        elements.toast.classList.remove('translate-y-0', 'opacity-100');
+        elements.toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    },
+
+    // 显示模态框
+    showModal(modal) {
+      modal.classList.remove('opacity-0', 'invisible');
+      modal.classList.add('opacity-100', 'visible');
+      modal.querySelector('div').classList.remove('scale-95');
+      modal.querySelector('div').classList.add('scale-100');
+      document.body.style.overflow = 'hidden';
+    },
+
+    // 隐藏模态框
+    hideModal(modal) {
+      modal.classList.remove('opacity-100', 'visible');
+      modal.classList.add('opacity-0', 'invisible');
+      modal.querySelector('div').classList.remove('scale-100');
+      modal.querySelector('div').classList.add('scale-95');
+      document.body.style.overflow = '';
+    },
+
+    // 格式化日期
+    formatDate(date) {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) {
+        return '刚刚';
+      } else if (diffMins < 60) {
+        return `${diffMins}分钟前`;
+      } else if (diffHours < 24) {
+        return `${diffHours}小时前`;
+      } else if (diffDays < 30) {
+        return `${diffDays}天前`;
+      } else {
+        return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      }
+    },
+
+    // 检查是否是特殊账号
+    isSpecialAccount(username) {
+      return ['10000', '10001', '10002'].includes(username);
+    },
+
+    // 验证注册信息
+    validateRegistration(username, nickname, password, confirmPassword) {
+      // 特殊账号不受长度限制
+      if (!this.isSpecialAccount(username)) {
+        if (username.length < 6) {
+          return { valid: false, message: '账号长度至少6位' };
+        }
+
+        if (password.length < 8) {
+          return { valid: false, message: '密码长度至少8位' };
+        }
+      }
+
+      if (!nickname || nickname.trim() === '') {
+        return { valid: false, message: '请输入昵称' };
+      }
+
+      if (password !== confirmPassword) {
+        return { valid: false, message: '两次输入的密码不一致' };
+      }
+
+      // 检查账号是否已存在
+      const existingUser = state.users.find(user => user.id === username);
+      if (existingUser) {
+        return { valid: false, message: '该账号已被注册' };
+      }
+
+      return { valid: true };
+    },
+
+    // 生成UUID
+    generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    },
+
+    // 获取用户等级
+    getUserLevel(exp) {
+      if (exp >= levelConfig[99].totalExp) {
+        return 100;
+      }
+
+      for (let i = 0; i < levelConfig.length; i++) {
+        if (exp < levelConfig[i].totalExp) {
+          return i + 1;
+        }
+      }
+
+      return 1;
+    },
+
+    // 检查是否关注了用户
+    isFollowing(userId) {
+      return state.following.includes(userId);
+    },
+
+    // 保存数据到本地存储
+    saveData() {
+      localStorage.setItem('fengtianForumState', JSON.stringify({
+        currentUser: state.currentUser,
+        users: state.users,
+        posts: state.posts,
+        following: state.following
+      }));
+    },
+
+    // 从本地存储加载数据
+    loadData() {
+      const savedData = localStorage.getItem('fengtianForumState');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        state.currentUser = parsedData.currentUser;
+        state.users = parsedData.users;
+        state.posts = parsedData.posts;
+        state.following = parsedData.following;
+
+        // 转换日期字符串为Date对象
+        state.users.forEach(user => {
+          if (user.lastLogin) {
+            user.lastLogin = new Date(user.lastLogin);
+          }
+        });
+
+        state.posts.forEach(post => {
+          post.createdAt = new Date(post.createdAt);
+        });
+      }
+    }
+  };
+
+  // 渲染函数
+  const render = {
+    // 渲染导航栏用户信息
+    renderNavUserInfo() {
+      if (state.currentUser) {
+        // 显示用户菜单，隐藏登录注册按钮
+        elements.userMenuContainer.classList.remove('hidden');
+        elements.loginBtn.classList.add('hidden');
+        elements.registerBtn.classList.add('hidden');
+        elements.searchContainer.classList.remove('hidden');
+        elements.mobileAuthButtons.classList.add('hidden');
+        elements.mobileUserMenu.classList.remove('hidden');
+
+        // 获取当前用户详细信息
+        const user = state.users.find(u => u.id === state.currentUser);
+        if (user) {
+          elements.navAvatar.src = user.avatar || 'https://picsum.photos/200/200?random=1';
+          elements.navUsername.textContent = user.nickname || user.id;
+          elements.mobileNavAvatar.src = user.avatar || 'https://picsum.photos/200/200?random=1';
+          elements.mobileNavUsername.textContent = user.nickname || user.id;
+          elements.mobileNavLevel.textContent = `Lv.${user.level || 1}`;
+
+          // 显示或隐藏大V标识
+          if (user.isVip) {
+            elements.navVBadge.classList.remove('hidden');
+            elements.mobileNavVBadge.classList.remove('hidden');
+          } else {
+            elements.navVBadge.classList.add('hidden');
+            elements.mobileNavVBadge.classList.add('hidden');
+          }
+        }
+      } else {
+        // 隐藏用户菜单，显示登录注册按钮
+        elements.userMenuContainer.classList.add('hidden');
+        elements.loginBtn.classList.remove('hidden');
+        elements.registerBtn.classList.remove('hidden');
+        elements.searchContainer.classList.add('hidden');
+        elements.mobileAuthButtons.classList.remove('hidden');
+        elements.mobileUserMenu.classList.add('hidden');
+      }
+    },
+
+    // 渲染帖子列表
+    renderPosts() {
+      elements.postsList.innerHTML = '';
+
+      if (state.posts.length === 0) {
+        elements.postsList.innerHTML = `
+                    <div class="text-center py-16 bg-white rounded-xl shadow-sm">
+                        <div class="text-gray-light text-5xl mb-4">
+                            <i class="fa fa-file-text-o"></i>
+                        </div>
+                        <p class="text-gray-medium">暂无帖子，快来发布第一条帖子吧！</p>
+                    </div>
+                `;
+        return;
+      }
+
+      // 按创建时间排序，最新的在前
+      const sortedPosts = [...state.posts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      sortedPosts.forEach(post => {
+        const user = state.users.find(u => u.id === post.userId);
+        if (!user) return;
+
+        const postElement = document.createElement('div');
+        postElement.className = 'bg-white rounded-xl shadow-sm overflow-hidden transform transition-all hover:shadow-md hover:-translate-y-1';
+        postElement.innerHTML = `
+                    <div class="p-6">
+                        <div class="flex items-start gap-4">
+                            <!-- 用户头像 -->
+                            <div class="relative cursor-pointer user-avatar" data-user-id="${user.id}">
+                                <div class="w-12 h-12 rounded-full overflow-hidden">
+                                    <img src="${user.avatar || 'https://picsum.photos/200/200?random=1'}" alt="${user.nickname || user.id}的头像" class="w-full h-full object-cover">
+                                </div>
+                                <!-- 大V标识 -->
+                                ${user.isVip ? `
+                                    <div class="post-v-badge animate-shine">
+                                        V
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            <!-- 帖子内容 -->
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    <h3 class="font-medium text-dark cursor-pointer user-nickname" data-user-id="${user.id}">${user.nickname || user.id}</h3>
+                                    <span class="text-xs px-2 py-0.5 bg-light rounded-full text-primary">Lv.${user.level || 1}</span>
+                                    <span class="text-gray-medium text-sm ml-auto">${utils.formatDate(new Date(post.createdAt))}</span>
+                                </div>
+
+                                <h2 class="text-xl font-bold mb-3 line-clamp-2">${post.title}</h2>
+
+                                <div class="post-content mb-4">
+                                    ${post.content}
+                                    ${post.imageUrl ? `<img src="${post.imageUrl}" alt="帖子图片" class="mt-3 max-w-full rounded-lg" style="max-width: ${post.imageWidth || 100}%;">` : ''}
+                                </div>
+
+                                <!-- 帖子操作 -->
+                                <div class="flex items-center justify-between text-gray-medium pt-2 border-t">
+                                    <div class="flex items-center gap-6">
+                                        <button class="flex items-center gap-1 hover:text-primary transition-colors like-btn" data-post-id="${post.id}">
+                                            <i class="fa fa-thumbs-o-up"></i>
+                                            <span>${post.likes || 0}</span>
+                                        </button>
+                                        <button class="flex items-center gap-1 hover:text-primary transition-colors comment-btn" data-post-id="${post.id}">
+                                            <i class="fa fa-comment-o"></i>
+                                            <span>${post.comments ? post.comments.length : 0}</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- 只有帖子作者可以看到删除按钮 -->
+                                    ${state.currentUser === post.userId ? `
+                                        <button class="text-gray-medium hover:text-red-500 transition-colors delete-post-btn" data-post-id="${post.id}">
+                                            <i class="fa fa-trash-o"></i>
+                                            <span class="ml-1">删除</span>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+        elements.postsList.appendChild(postElement);
+
+        // 添加事件监听
+        postElement.querySelector('.user-avatar').addEventListener('click', () => {
+          render.renderProfilePage(user.id);
+        });
+
+        postElement.querySelector('.user-nickname').addEventListener('click', () => {
+          render.renderProfilePage(user.id);
+        });
+
+        if (state.currentUser === post.userId) {
+          postElement.querySelector('.delete-post-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const postId = e.currentTarget.dataset.postId;
+            actions.deletePost(postId);
+          });
+        }
+      });
+    },
+
+    // 渲染用户帖子
+    renderUserPosts(userId) {
+      elements.userPostsList.innerHTML = '';
+
+      // 筛选该用户的帖子
+      const userPosts = state.posts.filter(post => post.userId === userId);
+
+      if (userPosts.length === 0) {
+        elements.noPosts.classList.remove('hidden');
+        return;
+      }
+
+      elements.noPosts.classList.add('hidden');
+
+      // 按创建时间排序，最新的在前
+      const sortedPosts = [...userPosts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      sortedPosts.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'bg-white rounded-xl shadow-sm overflow-hidden transform transition-all hover:shadow-md hover:-translate-y-1';
+        postElement.innerHTML = `
+                    <div class="p-6">
+                        <h2 class="text-xl font-bold mb-3">${post.title}</h2>
+
+                        <div class="post-content mb-4">
+                            ${post.content}
+                            ${post.imageUrl ? `<img src="${post.imageUrl}" alt="帖子图片" class="mt-3 max-w-full rounded-lg" style="max-width: ${post.imageWidth || 100}%;">` : ''}
+                        </div>
+
+                        <!-- 帖子信息和操作 -->
+                        <div class="flex items-center justify-between text-gray-medium pt-2 border-t">
+                            <div>
+                                <span>${utils.formatDate(new Date(post.createdAt))}</span>
+                            </div>
+
+                            <!-- 只有帖子作者可以看到删除按钮 -->
+                            ${state.currentUser === post.userId ? `
+                                <button class="text-gray-medium hover:text-red-500 transition-colors delete-post-btn" data-post-id="${post.id}">
+                                    <i class="fa fa-trash-o"></i>
+                                    <span class="ml-1">删除</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+        elements.userPostsList.appendChild(postElement);
+
+        // 添加删除事件监听
+        if (state.currentUser === post.userId) {
+          postElement.querySelector('.delete-post-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const postId = e.currentTarget.dataset.postId;
+            actions.deletePost(postId);
+          });
+        }
+      });
+    },
+
+    // 渲染个人主页
+    renderProfilePage(userId) {
+      const user = state.users.find(u => u.id === userId);
+      if (!user) return;
+
+      // 切换到个人主页
+      elements.forumContainer.classList.add('hidden');
+      elements.profilePage.classList.remove('hidden');
+
+      // 填充用户信息
+      elements.profilePageAvatar.src = user.avatar || 'https://picsum.photos/200/200?random=1';
+      elements.profilePageNickname.textContent = user.nickname || user.id;
+      elements.profilePageLevel.textContent = `Lv.${user.level || 1}`;
+      elements.profilePageUsername.textContent = `账号: ${user.id}`;
+
+      // 统计该用户的帖子数量
+      const userPostsCount = state.posts.filter(post => post.userId === userId).length;
+      elements.profilePostCount.textContent = userPostsCount;
+
+      elements.profileFansCount.textContent = user.fans || 0;
+      elements.profileRegisterDate.textContent = user.registerDate || '未知';
+      elements.profileLastLogin.textContent = utils.formatDate(new Date(user.lastLogin || new Date()));
+
+      // 显示或隐藏大V标识
+      if (user.isVip) {
+        elements.vBadge.classList.remove('hidden');
+      } else {
+        elements.vBadge.classList.add('hidden');
+      }
+
+      // 显示适当的操作按钮
+      elements.followBtn.classList.add('hidden');
+      elements.unfollowBtn.classList.add('hidden');
+      elements.editOwnProfileBtn.classList.add('hidden');
+
+      if (state.currentUser === userId) {
+        // 自己的主页，显示编辑按钮
+        elements.editOwnProfileBtn.classList.remove('hidden');
+      } else if (state.currentUser) {
+        // 他人的主页，显示关注/取消关注按钮
+        if (utils.isFollowing(userId)) {
+          elements.unfollowBtn.classList.remove('hidden');
+        } else {
+          elements.followBtn.classList.remove('hidden');
+        }
+      }
+
+      // 渲染用户帖子
+      this.renderUserPosts(userId);
+    },
+
+    // 切换到论坛页面
+    renderForumPage() {
+      elements.profilePage.classList.add('hidden');
+      elements.forumContainer.classList.remove('hidden');
+      this.renderPosts();
+    }
+  };
+
+  // 动作函数
+  const actions = {
+    // 登录
+    login(username, password) {
+      const user = state.users.find(u => u.id === username && u.password === password);
+
+      if (user) {
+        // 更新最后登录时间
+        user.lastLogin = new Date();
+        state.currentUser = user.id;
+        utils.saveData();
+        render.renderNavUserInfo();
+        render.renderPosts();
+        return true;
+      }
+
+      return false;
+    },
+
+    // 注册
+    register(username, nickname, password) {
+      const newUser = {
+        id: username,
+        password: password,
+        nickname: nickname,
+        avatar: `https://picsum.photos/200/200?random=${Math.floor(Math.random() * 100)}`,
+        level: 1,
+        exp: 0,
+        fans: 0,
+        isVip: false,
+        registerDate: new Date().toISOString().split('T')[0],
+        lastLogin: new Date()
+      };
+
+      state.users.push(newUser);
+      state.currentUser = newUser.id;
+      utils.saveData();
+      render.renderNavUserInfo();
+      return true;
+    },
+
+    // 退出登录
+    logout() {
+      if (state.currentUser) {
+        // 更新最后登录时间
+        const user = state.users.find(u => u.id === state.currentUser);
+        if (user) {
+          user.lastLogin = new Date();
+        }
+      }
+
+      state.currentUser = null;
+      utils.saveData();
+      render.renderNavUserInfo();
+      render.renderForumPage();
+    },
+
+    // 发布帖子
+    publishPost(title, content, imageUrl = null, imageWidth = 100) {
+      if (!state.currentUser) return false;
+
+      const newPost = {
+        id: utils.generateUUID(),
+        userId: state.currentUser,
+        title: title,
+        content: content,
+        imageUrl: imageUrl,
+        imageWidth: imageWidth,
+        createdAt: new Date(),
+        likes: 0,
+        comments: []
+      };
+
+      state.posts.push(newPost);
+
+      // 发布帖子增加经验
+      const user = state.users.find(u => u.id === state.currentUser);
+      if (user && !user.isVip) { // 大V不增加经验
+        user.exp = (user.exp || 0) + 10;
+        // 更新等级
+        user.level = utils.getUserLevel(user.exp);
+      }
+
+      utils.saveData();
+      render.renderPosts();
+      return true;
+    },
+
+    // 删除帖子
+    deletePost(postId) {
+      const postIndex = state.posts.findIndex(post => post.id === postId);
+      if (postIndex === -1) return false;
+
+      // 检查是否有权限删除
+      const post = state.posts[postIndex];
+      if (state.currentUser !== post.userId) return false;
+
+      state.posts.splice(postIndex, 1);
+      utils.saveData();
+
+      // 如果当前在个人主页，重新渲染个人主页帖子
+      if (!elements.profilePage.classList.contains('hidden')) {
+        render.renderUserPosts(state.currentUser);
+      } else {
+        render.renderPosts();
+      }
+
+      utils.showToast('帖子已删除');
+      return true;
+    },
+
+    // 关注用户
+    followUser(userId) {
+      if (!state.currentUser || state.currentUser === userId || utils.isFollowing(userId)) {
+        return false;
+      }
+
+      state.following.push(userId);
+
+      // 增加被关注用户的粉丝数
+      const user = state.users.find(u => u.id === userId);
+      if (user) {
+        user.fans = (user.fans || 0) + 1;
+      }
+
+      utils.saveData();
+      render.renderProfilePage(userId);
+      utils.showToast('关注成功');
+      return true;
+    },
+
+    // 取消关注用户
+    unfollowUser(userId) {
+      if (!state.currentUser || state.currentUser === userId || !utils.isFollowing(userId)) {
+        return false;
+      }
+
+      const followIndex = state.following.findIndex(id => id === userId);
+      if (followIndex !== -1) {
+        state.following.splice(followIndex, 1);
+
+        // 减少被取消关注用户的粉丝数
+        const user = state.users.find(u => u.id === userId);
+        if (user && user.fans > 0) {
+          user.fans = (user.fans || 0) - 1;
+        }
+
+        utils.saveData();
+        render.renderProfilePage(userId);
+        utils.showToast('已取消关注');
+        return true;
+      }
+
+      return false;
+    },
+
+    // 更新用户资料
+    updateProfile(nickname, newPassword = null, avatar = null) {
+      if (!state.currentUser) return false;
+
+      const user = state.users.find(u => u.id === state.currentUser);
+      if (!user) return false;
+
+      // 更新昵称
+      if (nickname && nickname.trim() !== '') {
+        user.nickname = nickname;
+      }
+
+      // 更新密码
+      if (newPassword) {
+        user.password = newPassword;
+      }
+
+      // 更新头像
+      if (avatar) {
+        user.avatar = avatar;
+      }
+
+      utils.saveData();
+      render.renderNavUserInfo();
+      render.renderProfilePage(state.currentUser);
+      return true;
+    }
+  };
+
+  // 事件监听
+  function setupEventListeners() {
+    // 导航栏滚动效果
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 10) {
+        elements.navbar.classList.add('py-2', 'shadow-lg');
+        elements.navbar.classList.remove('py-3', 'shadow-md');
+      } else {
+        elements.navbar.classList.add('py-3', 'shadow-md');
+        elements.navbar.classList.remove('py-2', 'shadow-lg');
+      }
+    });
+
+    // 用户菜单下拉
+    elements.userMenuBtn.addEventListener('click', () => {
+      if (elements.userDropdown.classList.contains('invisible')) {
+        elements.userDropdown.classList.remove('invisible', 'opacity-0', 'translate-y-2');
+        elements.userDropdown.classList.add('visible', 'opacity-100', 'translate-y-0');
+      } else {
+        elements.userDropdown.classList.add('invisible', 'opacity-0', 'translate-y-2');
+        elements.userDropdown.classList.remove('visible', 'opacity-100', 'translate-y-0');
+      }
+    });
+
+    // 点击其他地方关闭下拉菜单
+    document.addEventListener('click', (e) => {
+      if (!elements.userMenuContainer.contains(e.target)) {
+        elements.userDropdown.classList.add('invisible', 'opacity-0', 'translate-y-2');
+        elements.userDropdown.classList.remove('visible', 'opacity-100', 'translate-y-0');
+      }
+    });
+
+    // 移动端菜单切换
+    elements.mobileMenuBtn.addEventListener('click', () => {
+      elements.mobileMenu.classList.toggle('hidden');
+    });
+
+    // 登录模态框
+    elements.loginBtn.addEventListener('click', () => {
+      utils.showModal(elements.loginModal);
+    });
+
+    elements.mobileLoginBtn.addEventListener('click', () => {
+      elements.mobileMenu.classList.add('hidden');
+      utils.showModal(elements.loginModal);
+    });
+
+    elements.closeLoginModal.addEventListener('click', () => {
+      utils.hideModal(elements.loginModal);
+    });
+
+    elements.loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = elements.loginUsername.value.trim();
+      const password = elements.loginPassword.value.trim();
+
+      if (actions.login(username, password)) {
+        utils.hideModal(elements.loginModal);
+        elements.loginForm.reset();
+        utils.showToast('登录成功');
+      } else {
+        utils.showToast('账号或密码错误', false);
+      }
+    });
+
+    // 注册模态框
+    elements.registerBtn.addEventListener('click', () => {
+      utils.showModal(elements.registerModal);
+    });
+
+    elements.mobileRegisterBtn.addEventListener('click', () => {
+      elements.mobileMenu.classList.add('hidden');
+      utils.showModal(elements.registerModal);
+    });
+
+    elements.closeRegisterModal.addEventListener('click', () => {
+      utils.hideModal(elements.registerModal);
+    });
+
+    elements.registerForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = elements.registerUsername.value.trim();
+      const nickname = elements.registerNickname.value.trim();
+      const password = elements.registerPassword.value.trim();
+      const confirmPassword = elements.registerConfirmPassword.value.trim();
+
+      const validation = utils.validateRegistration(username, nickname, password, confirmPassword);
+      if (!validation.valid) {
+        utils.showToast(validation.message, false);
+        return;
+      }
+
+      if (actions.register(username, nickname, password)) {
+        utils.hideModal(elements.registerModal);
+        elements.registerForm.reset();
+        utils.showToast('注册成功');
+      } else {
+        utils.showToast('注册失败，请稍后再试', false);
+      }
+    });
+
+    // 切换登录/注册
+    elements.switchToRegister.addEventListener('click', (e) => {
+      e.preventDefault();
+      utils.hideModal(elements.loginModal);
+      setTimeout(() => {
+        utils.showModal(elements.registerModal);
+      }, 300);
+    });
+
+    elements.switchToLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      utils.hideModal(elements.registerModal);
+      setTimeout(() => {
+        utils.showModal(elements.loginModal);
+      }, 300);
+    });
+
+    // 密码显示切换
+    document.querySelectorAll('.toggle-password').forEach(button => {
+      button.addEventListener('click', () => {
+        const targetId = button.dataset.target;
+        const passwordInput = document.getElementById(targetId);
+        const icon = button.querySelector('i');
+
+        if (passwordInput.type === 'password') {
+          passwordInput.type = 'text';
+          icon.classList.remove('fa-eye-slash');
+          icon.classList.add('fa-eye');
+        } else {
+          passwordInput.type = 'password';
+          icon.classList.remove('fa-eye');
+          icon.classList.add('fa-eye-slash');
+        }
+      });
+    });
+
+    // 发帖模态框
+    elements.createPostBtn.addEventListener('click', () => {
+      if (!state.currentUser) {
+        utils.showToast('请先登录', false);
+        utils.showModal(elements.loginModal);
+        return;
+      }
+
+      utils.showModal(elements.postModal);
+      // 重置表单
+      elements.postTitle.value = '';
+      elements.postContent.innerHTML = '请输入发表内容';
+      elements.imagePreviewContainer.classList.add('hidden');
+      elements.imagePreview.src = '';
+      elements.sizePercentage.textContent = '100%';
+    });
+
+    elements.closePostModal.addEventListener('click', () => {
+      utils.hideModal(elements.postModal);
+    });
+
+    elements.cancelPost.addEventListener('click', () => {
+      utils.hideModal(elements.postModal);
+    });
+
+    // 帖子工具栏 - 加粗
+    elements.boldBtn.addEventListener('click', () => {
+      document.execCommand('bold', false, null);
+      elements.postContent.focus();
+    });
+
+    // 帖子工具栏 - 添加图片
+    elements.imageBtn.addEventListener('click', () => {
+      elements.imageUpload.click();
+    });
+
+    elements.imageUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          elements.imagePreview.src = event.target.result;
+          elements.imagePreviewContainer.classList.remove('hidden');
+          elements.sizePercentage.textContent = '100%';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // 移除图片
+    elements.removeImage.addEventListener('click', () => {
+      elements.imagePreviewContainer.classList.add('hidden');
+      elements.imagePreview.src = '';
+      elements.imageUpload.value = '';
+    });
+
+    // 调整图片大小
+    let currentSize = 100;
+    elements.decreaseSize.addEventListener('click', () => {
+      currentSize = Math.max(50, currentSize - 10);
+      elements.sizePercentage.textContent = `${currentSize}%`;
+    });
+
+    elements.increaseSize.addEventListener('click', () => {
+      currentSize = Math.min(150, currentSize + 10);
+      elements.sizePercentage.textContent = `${currentSize}%`;
+    });
+
+    // 提交帖子
+    elements.submitPost.addEventListener('click', () => {
+      const title = elements.postTitle.value.trim();
+      const content = elements.postContent.innerHTML.trim();
+
+      if (!title) {
+        utils.showToast('请输入标题', false);
+        return;
+      }
+
+      if (!content || content === '请输入发表内容') {
+        utils.showToast('请输入内容', false);
+        return;
+      }
+
+      let imageUrl = null;
+      let imageWidth = 100;
+      if (!elements.imagePreviewContainer.classList.contains('hidden')) {
+        imageUrl = elements.imagePreview.src;
+        imageWidth = currentSize;
+      }
+
+      if (actions.publishPost(title, content, imageUrl, imageWidth)) {
+        utils.hideModal(elements.postModal);
+        utils.showToast('帖子发布成功');
+      } else {
+        utils.showToast('发布失败，请稍后再试', false);
+      }
+    });
+
+    // 编辑资料模态框
+    elements.editProfileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!state.currentUser) return;
+
+      const user = state.users.find(u => u.id === state.currentUser);
+      if (user) {
+        elements.profileAvatar.src = user.avatar || 'https://picsum.photos/200/200?random=1';
+        elements.editNickname.value = user.nickname || user.id;
+        elements.currentPassword.value = '';
+        elements.newPassword.value = '';
+        elements.confirmNewPassword.value = '';
+
+        utils.showModal(elements.editProfileModal);
+      }
+    });
+
+    elements.mobileEditProfileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      elements.mobileMenu.classList.add('hidden');
+      if (!state.currentUser) return;
+
+      const user = state.users.find(u => u.id === state.currentUser);
+      if (user) {
+        elements.profileAvatar.src = user.avatar || 'https://picsum.photos/200/200?random=1';
+        elements.editNickname.value = user.nickname || user.id;
+        elements.currentPassword.value = '';
+        elements.newPassword.value = '';
+        elements.confirmNewPassword.value = '';
+
+        utils.showModal(elements.editProfileModal);
+      }
+    });
+
+    elements.editOwnProfileBtn.addEventListener('click', () => {
+      if (!state.currentUser) return;
+
+      const user = state.users.find(u => u.id === state.currentUser);
+      if (user) {
+        elements.profileAvatar.src = user.avatar || 'https://picsum.photos/200/200?random=1';
+        elements.editNickname.value = user.nickname || user.id;
+        elements.currentPassword.value = '';
+        elements.newPassword.value = '';
+        elements.confirmNewPassword.value = '';
+
+        utils.showModal(elements.editProfileModal);
+      }
+    });
+
+    elements.closeEditProfileModal.addEventListener('click', () => {
+      utils.hideModal(elements.editProfileModal);
+    });
+
+    elements.cancelEditProfile.addEventListener('click', () => {
+      utils.hideModal(elements.editProfileModal);
+    });
+
+    // 更换头像
+    elements.avatarUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          elements.profileAvatar.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // 保存资料修改
+    elements.saveProfile.addEventListener('click', () => {
+      if (!state.currentUser) {
+        utils.hideModal(elements.editProfileModal);
+        return;
+      }
+
+      const user = state.users.find(u => u.id === state.currentUser);
+      if (!user) {
+        utils.hideModal(elements.editProfileModal);
+        return;
+      }
+
+      const nickname = elements.editNickname.value.trim();
+      const currentPassword = elements.currentPassword.value.trim();
+      const newPassword = elements.newPassword.value.trim();
+      const confirmPassword = elements.confirmNewPassword.value.trim();
+
+      // 验证密码修改
+      if (currentPassword || newPassword || confirmPassword) {
+        if (currentPassword !== user.password) {
+          utils.showToast('当前密码不正确', false);
+          return;
+        }
+
+        if (newPassword.length > 0 && newPassword.length < 8 && !utils.isSpecialAccount(user.id)) {
+          utils.showToast('新密码长度至少8位', false);
+          return;
+        }
+
+        if (newPassword !== confirmPassword) {
+          utils.showToast('两次输入的新密码不一致', false);
+          return;
+        }
+      }
+
+      // 准备更新的数据
+      let avatar = null;
+      if (elements.profileAvatar.src !== user.avatar) {
+        avatar = elements.profileAvatar.src;
+      }
+
+      // 更新资料
+      if (actions.updateProfile(nickname, newPassword || null, avatar)) {
+        utils.hideModal(elements.editProfileModal);
+        utils.showToast('资料更新成功');
+      } else {
+        utils.showToast('更新失败，请稍后再试', false);
+      }
+    });
+
+    // 个人主页
+    elements.profileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (state.currentUser) {
+        render.renderProfilePage(state.currentUser);
+      }
+    });
+
+    elements.mobileProfileLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      elements.mobileMenu.classList.add('hidden');
+      if (state.currentUser) {
+        render.renderProfilePage(state.currentUser);
+      }
+    });
+
+    // 返回论坛
+    elements.backToForum.addEventListener('click', () => {
+      render.renderForumPage();
+    });
+
+    // 关注/取消关注
+    elements.followBtn.addEventListener('click', () => {
+      const userId = elements.profilePageUsername.textContent.replace('账号: ', '');
+      actions.followUser(userId);
+    });
+
+    elements.unfollowBtn.addEventListener('click', () => {
+      const userId = elements.profilePageUsername.textContent.replace('账号: ', '');
+      actions.unfollowUser(userId);
+    });
+
+    // 退出登录
+    elements.logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      actions.logout();
+      utils.showToast('已退出登录');
+    });
+
+    elements.mobileLogoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      elements.mobileMenu.classList.add('hidden');
+      actions.logout();
+      utils.showToast('已退出登录');
+    });
+
+    // 加载更多
+    elements.loadMore.addEventListener('click', () => {
+      // 模拟加载更多
+      elements.loadMore.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> 加载中...';
+
+      setTimeout(() => {
+        elements.loadMore.innerHTML = '加载更多 <i class="fa fa-angle-down ml-1"></i>';
+        utils.showToast('已经是全部内容了');
+      }, 1000);
+    });
+  }
+
+  // 初始化
+  function init() {
+    // 从本地存储加载数据
+    utils.loadData();
+
+    // 设置事件监听
+    setupEventListeners();
+
+    // 渲染导航栏用户信息
+    render.renderNavUserInfo();
+
+    // 渲染帖子列表
+    render.renderPosts();
+  }
+
+  // 启动应用
+  init();
+</script>
+</body>
+</html>
